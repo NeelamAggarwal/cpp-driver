@@ -739,7 +739,7 @@ void Session::on_execute(uv_async_t* data) {
 QueryPlan* Session::new_query_plan(const Request* request, Request::EncodingCache* cache) {
   const CopyOnWritePtr<std::string> keyspace(keyspace_);
   return load_balancing_policy_->new_query_plan(*keyspace, request,
-                                                metadata_.token_map(), cache);
+                                                *token_metadata_, cache);
 }
 
 } // namespace cass

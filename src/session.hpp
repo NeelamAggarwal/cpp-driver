@@ -32,6 +32,7 @@
 #include "row.hpp"
 #include "scoped_lock.hpp"
 #include "scoped_ptr.hpp"
+#include "token_metadata.hpp"
 
 #include <list>
 #include <memory>
@@ -196,6 +197,8 @@ private:
   IOWorkerVec io_workers_;
   ScopedPtr<AsyncQueue<MPMCQueue<RequestHandler*> > > request_queue_;
   Metadata metadata_;
+  ScopedPtr<TokenMetadata> token_metadata_;
+
   ControlConnection control_connection_;
   bool current_host_mark_;
   int pending_pool_count_;

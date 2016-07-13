@@ -19,11 +19,11 @@
 
 #include "copy_on_write_ptr.hpp"
 #include "iterator.hpp"
+#include "host.hpp"
 #include "macros.hpp"
 #include "ref_counted.hpp"
 #include "scoped_lock.hpp"
 #include "scoped_ptr.hpp"
-#include "token_map.hpp"
 #include "data_type.hpp"
 #include "value.hpp"
 
@@ -672,12 +672,14 @@ public:
     config_.cassandra_version = cassandra_version;
   }
 
+#if 0
   void set_partitioner(const std::string& partitioner_class) { token_map_.set_partitioner(partitioner_class); }
   void update_host(SharedRefPtr<Host>& host, const TokenStringList& tokens) { token_map_.update_host(host, tokens); }
   void build() { token_map_.build(); }
   void remove_host(SharedRefPtr<Host>& host) { token_map_.remove_host(host); }
 
   const TokenMap& token_map() const { return token_map_; }
+#endif
 
 private:
   bool is_front_buffer() const { return updating_ == &front_; }
@@ -690,7 +692,7 @@ private:
 
     const KeyspaceMetadata::MapPtr& keyspaces() const { return keyspaces_; }
 
-    void update_keyspaces(const MetadataConfig& config, ResultResponse* result, KeyspaceMetadata::Map& updates);
+    void update_keyspaces(const MetadataConfig& config, ResultResponse* result);
     void update_tables(const MetadataConfig& config, ResultResponse* result);
     void update_views(const MetadataConfig& config, ResultResponse* result);
     void update_columns(const MetadataConfig& config, ResultResponse* result);
@@ -732,11 +734,6 @@ private:
 
   // This lock prevents partial snapshots when updating metadata
   mutable uv_mutex_t mutex_;
-
-  // Only used internally on a single thread so it doesn't currently use
-  // copy-on-write. When this is exposed externally it needs to be
-  // moved into the InternalData class and made to use copy-on-write.
-  TokenMap token_map_;
 
   // Only used internally on a single thread, there's
   // no need for copy-on-write.

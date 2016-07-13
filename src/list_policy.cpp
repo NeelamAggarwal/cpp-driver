@@ -42,11 +42,11 @@ CassHostDistance ListPolicy::distance(const SharedRefPtr<Host>& host) const {
 
 QueryPlan* ListPolicy::new_query_plan(const std::string& connected_keyspace,
                                            const Request* request,
-                                           const TokenMap& token_map,
+                                           const TokenMetadata& token_metadata,
                                            Request::EncodingCache* cache) {
   return child_policy_->new_query_plan(connected_keyspace,
                                        request,
-                                       token_map,
+                                       token_metadata,
                                        cache);
 }
 

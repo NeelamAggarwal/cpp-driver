@@ -19,7 +19,6 @@
 
 #include "address.hpp"
 #include "connection.hpp"
-#include "token_map.hpp"
 #include "handler.hpp"
 #include "host.hpp"
 #include "load_balancing.hpp"
@@ -27,6 +26,7 @@
 #include "multiple_request_handler.hpp"
 #include "response.hpp"
 #include "scoped_ptr.hpp"
+#include "token_metadata.hpp"
 
 namespace cass {
 

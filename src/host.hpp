@@ -135,9 +135,13 @@ public:
 
   const std::string& rack() const { return rack_; }
   const std::string& dc() const { return dc_; }
+  const std::string& dc_rack() const { return dc_rack_; }
   void set_rack_and_dc(const std::string& rack, const std::string& dc) {
     rack_ = rack;
     dc_ = dc;
+    dc_rack_.assign(dc);
+    dc_rack_.push_back('\0'); // null-terminator guaranteed not be in either rack or dc names
+    dc_rack_.append(rack);
   }
 
   const std::string& listen_address() const { return listen_address_; }
@@ -227,6 +231,7 @@ private:
   std::string hostname_;
   std::string rack_;
   std::string dc_;
+  std::string dc_rack_;
 
   ScopedPtr<LatencyTracker> latency_tracker_;
 
@@ -244,5 +249,17 @@ void add_host(CopyOnWriteHostVec& hosts, const SharedRefPtr<Host>& host);
 void remove_host(CopyOnWriteHostVec& hosts, const SharedRefPtr<Host>& host);
 
 } // namespace cass
+
+namespace  std {
+
+template<>
+struct hash<cass::Host::Ptr> {
+  std::size_t operator()(const cass::Host::Ptr& host) const {
+    return hash(host->address());
+  }
+  std::hash<cass::Address> hash;
+};
+
+} // namespace std
 
 #endif

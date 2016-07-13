@@ -795,19 +795,13 @@ Metadata::SchemaSnapshot Metadata::schema_snapshot() const {
 }
 
 void Metadata::update_keyspaces(ResultResponse* result) {
-  KeyspaceMetadata::Map updates;
-
   schema_snapshot_version_++;
 
   if (is_front_buffer()) {
     ScopedMutex l(&mutex_);
-    updating_->update_keyspaces(config_, result, updates);
+    updating_->update_keyspaces(config_, result);
   } else {
-    updating_->update_keyspaces(config_, result, updates);
-  }
-
-  for (KeyspaceMetadata::Map::const_iterator i = updates.begin(); i != updates.end(); ++i) {
-    token_map_.update_keyspace(i->first, i->second);
+    updating_->update_keyspaces(config_, result);
   }
 }
 
@@ -955,7 +949,6 @@ void Metadata::clear_and_update_back() {
   } else {
     config_.native_types.init_class_names();
   }
-  token_map_.clear();
   back_.clear();
   updating_ = &back_;
 }
@@ -977,7 +970,6 @@ void Metadata::clear() {
     front_.clear();
   }
   back_.clear();
-  token_map_.clear();
 }
 
 const Value* MetadataBase::get_field(const std::string& name) const {
@@ -1870,7 +1862,7 @@ ColumnMetadata::ColumnMetadata(const MetadataConfig& config,
 }
 
 void Metadata::InternalData::update_keyspaces(const MetadataConfig& config,
-                                              ResultResponse* result, KeyspaceMetadata::Map& updates) {
+                                              ResultResponse* result) {
   SharedRefPtr<RefBuffer> buffer = result->buffer();
   result->decode_first_row();
   ResultIterator rows(result);
@@ -1886,7 +1878,6 @@ void Metadata::InternalData::update_keyspaces(const MetadataConfig& config,
 
     KeyspaceMetadata* keyspace = get_or_create_keyspace(keyspace_name);
     keyspace->update(config, buffer, row);
-    updates.insert(std::make_pair(keyspace_name, *keyspace));
   }
 }
 

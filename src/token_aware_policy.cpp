@@ -16,6 +16,8 @@
 
 #include "token_aware_policy.hpp"
 
+#include "token_metadata.hpp"
+
 namespace cass {
 
 // The number of replicas is bounded by replication factor per DC. In practice, the number
@@ -32,7 +34,7 @@ static inline bool contains(const CopyOnWriteHostVec& replicas, const Address& a
 
 QueryPlan* TokenAwarePolicy::new_query_plan(const std::string& connected_keyspace,
                                             const Request* request,
-                                            const TokenMap& token_map,
+                                            const TokenMetadata& token_metadata,
                                             Request::EncodingCache* cache) {
   if (request != NULL) {
     switch (request->opcode()) {
@@ -46,10 +48,10 @@ QueryPlan* TokenAwarePolicy::new_query_plan(const std::string& connected_keyspac
                                       ? connected_keyspace : statement_keyspace;
         std::string routing_key;
         if (rr->get_routing_key(&routing_key, cache) && !keyspace.empty()) {
-          CopyOnWriteHostVec replicas = token_map.get_replicas(keyspace, routing_key);
+          CopyOnWriteHostVec replicas = token_metadata.get_replicas(keyspace, routing_key);
           if (!replicas->empty()) {
             return new TokenAwareQueryPlan(child_policy_.get(),
-                                           child_policy_->new_query_plan(connected_keyspace, request, token_map, cache),
+                                           child_policy_->new_query_plan(connected_keyspace, request, token_metadata, cache),
                                            replicas,
                                            index_++);
           }
@@ -61,7 +63,7 @@ QueryPlan* TokenAwarePolicy::new_query_plan(const std::string& connected_keyspac
         break;
     }
   }
-  return child_policy_->new_query_plan(connected_keyspace, request, token_map, cache);
+  return child_policy_->new_query_plan(connected_keyspace, request, token_metadata, cache);
 }
 
 SharedRefPtr<Host> TokenAwarePolicy::TokenAwareQueryPlan::compute_next()  {

@@ -17,7 +17,6 @@
 #ifndef __CASS_TOKEN_AWARE_POLICY_HPP_INCLUDED__
 #define __CASS_TOKEN_AWARE_POLICY_HPP_INCLUDED__
 
-#include "token_map.hpp"
 #include "load_balancing.hpp"
 #include "host.hpp"
 #include "scoped_ptr.hpp"
@@ -34,7 +33,7 @@ public:
 
   virtual QueryPlan* new_query_plan(const std::string& connected_keyspace,
                                     const Request* request,
-                                    const TokenMap& token_map,
+                                    const TokenMetadata& token_metadata,
                                     Request::EncodingCache* cache);
 
   LoadBalancingPolicy* new_instance() { return new TokenAwarePolicy(child_policy_->new_instance()); }

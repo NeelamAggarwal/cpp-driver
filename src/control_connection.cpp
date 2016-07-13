@@ -284,7 +284,7 @@ void ControlConnection::on_event(EventResponse* response) {
           SharedRefPtr<Host> host = session_->get_host(response->affected_node());
           if (host) {
             session_->on_remove(host);
-            session_->metadata().remove_host(host);
+            session_->token_metadata_->remove_host(host);
           } else {
             LOG_DEBUG("Tried to remove host %s that doesn't exist", address_str.c_str());
           }
@@ -298,7 +298,7 @@ void ControlConnection::on_event(EventResponse* response) {
             refresh_node_info(host, false, true);
           } else {
             LOG_DEBUG("Move event for host %s that doesn't exist", address_str.c_str());
-            session_->metadata().remove_host(host);
+            session_->token_metadata_->remove_host(host);
           }
           break;
       }
@@ -564,7 +564,7 @@ void ControlConnection::on_query_meta_schema(ControlConnection* control_connecti
   }
 
   session->metadata().swap_to_back_and_update_front();
-  if (control_connection->should_query_tokens_) session->metadata().build();
+  if (control_connection->should_query_tokens_) session->token_metadata_->build();
 
   if (is_initial_connection) {
     control_connection->state_ = CONTROL_STATE_READY;
@@ -731,18 +731,11 @@ void ControlConnection::update_node_info(SharedRefPtr<Host> host, const Row* row
     bool is_connected_host = connection_ != NULL && host->address().compare(connection_->address()) == 0;
     std::string partitioner;
     if (is_connected_host && row->get_string_by_name("partitioner", &partitioner)) {
-      session_->metadata().set_partitioner(partitioner);
+      session_->token_metadata_.reset(TokenMetadata::from_partitioner(partitioner));
     }
     v = row->get_by_name("tokens");
-    if (v != NULL) {
-      CollectionIterator i(v);
-      TokenStringList tokens;
-      while (i.next()) {
-        tokens.push_back(i.value()->to_string_ref());
-      }
-      if (!tokens.empty()) {
-        session_->metadata().update_host(host, tokens);
-      }
+    if (v != NULL && v->is_collection()) {
+      session_->token_metadata_->update_host(host, v);
     }
   }
 }
@@ -777,6 +770,8 @@ void ControlConnection::on_refresh_keyspace(ControlConnection* control_connectio
               keyspace_name.c_str());
     return;
   }
+  // TODO(mpenick): Move cassandra version
+  control_connection->session_->token_metadata_->update_keyspaces(control_connection->session_->metadata_.cassandra_version(), result);
   control_connection->session_->metadata().update_keyspaces(result);
 }
 

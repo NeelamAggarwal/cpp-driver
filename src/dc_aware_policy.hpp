@@ -52,7 +52,7 @@ public:
 
   virtual QueryPlan* new_query_plan(const std::string& connected_keyspace,
                                     const Request* request,
-                                    const TokenMap& token_map,
+                                    const TokenMetadata& token_metadata,
                                     Request::EncodingCache* cache);
 
   virtual void on_add(const SharedRefPtr<Host>& host);
