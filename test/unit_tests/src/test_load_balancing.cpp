@@ -43,6 +43,8 @@
 #include <string>
 #include <uv.h>
 
+#if 0
+
 using std::string;
 
 const string LOCAL_DC = "local";
@@ -914,3 +916,5 @@ BOOST_AUTO_TEST_CASE(dc)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+#endif

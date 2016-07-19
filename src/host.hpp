@@ -31,6 +31,7 @@
 #include <math.h>
 #include <set>
 #include <sstream>
+#include <stdint.h>
 #include <vector>
 
 namespace cass {
@@ -113,6 +114,8 @@ public:
 
   Host(const Address& address, bool mark)
       : address_(address)
+      , rack_id_(0)
+      , dc_id_(0)
       , mark_(mark)
       , state_(ADDED)
       , address_string_(address.to_string()) { }
@@ -135,13 +138,16 @@ public:
 
   const std::string& rack() const { return rack_; }
   const std::string& dc() const { return dc_; }
-  const std::string& dc_rack() const { return dc_rack_; }
   void set_rack_and_dc(const std::string& rack, const std::string& dc) {
     rack_ = rack;
     dc_ = dc;
-    dc_rack_.assign(dc);
-    dc_rack_.push_back('\0'); // null-terminator guaranteed not be in either rack or dc names
-    dc_rack_.append(rack);
+  }
+
+  uint32_t rack_id() const { return rack_id_; }
+  uint32_t dc_id() const { return dc_id_; }
+  void set_rack_and_dc_ids(uint32_t rack_id, uint32_t dc_id) {
+    rack_id_ = rack_id;
+    dc_id_ = dc_id;
   }
 
   const std::string& listen_address() const { return listen_address_; }
@@ -223,6 +229,8 @@ private:
   }
 
   Address address_;
+  uint32_t rack_id_;
+  uint32_t dc_id_;
   bool mark_;
   Atomic<HostState> state_;
   std::string address_string_;
@@ -231,7 +239,6 @@ private:
   std::string hostname_;
   std::string rack_;
   std::string dc_;
-  std::string dc_rack_;
 
   ScopedPtr<LatencyTracker> latency_tracker_;
 
@@ -249,17 +256,5 @@ void add_host(CopyOnWriteHostVec& hosts, const SharedRefPtr<Host>& host);
 void remove_host(CopyOnWriteHostVec& hosts, const SharedRefPtr<Host>& host);
 
 } // namespace cass
-
-namespace  std {
-
-template<>
-struct hash<cass::Host::Ptr> {
-  std::size_t operator()(const cass::Host::Ptr& host) const {
-    return hash(host->address());
-  }
-  std::hash<cass::Address> hash;
-};
-
-} // namespace std
 
 #endif

@@ -18,10 +18,6 @@
 
 #include "token_metadata_impl.hpp"
 
-#define CASS_MURMUR3_PARTITIONER      "Murmur3Partitioner"
-#define CASS_RANDOM_PARTITIONER       "RandomPartitioner"
-#define CASS_BYTE_ORDERED_PARTITIONER "ByteOrderedPartitioner"
-
 namespace cass {
 
 TokenMetadata* TokenMetadata::from_partitioner(const std::string& partitioner) {

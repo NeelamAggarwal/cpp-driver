@@ -28,6 +28,8 @@
 #include "scoped_ptr.hpp"
 #include "token_metadata.hpp"
 
+#include <stdint.h>
+
 namespace cass {
 
 class EventResponse;

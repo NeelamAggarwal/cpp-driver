@@ -32,6 +32,7 @@ namespace cass {
 
 static const CopyOnWriteHostVec NO_REPLICAS(new HostVec());
 
+/*
 static int64_t parse_int64(const char* p, size_t n) {
   int c;
   const char* s = p;
@@ -56,7 +57,7 @@ static int64_t parse_int64(const char* p, size_t n) {
   return sign * value;
 }
 
-static void parse_int128(const char* p, size_t n, uint8_t* output) {
+static void parse_int128(const char* p, size_t n, char* output) {
   // no sign handling because C* uses [0, 2^127]
   int c;
   const char* s = p;
@@ -93,6 +94,7 @@ static void parse_int128(const char* p, size_t n, uint8_t* output) {
   encode_uint64(output, hi);
   encode_uint64(output + sizeof(uint64_t), lo);
 }
+*/
 
 void TokenMap::clear() {
   mapped_addresses_.clear();
@@ -245,8 +247,8 @@ const std::string Murmur3Partitioner::PARTITIONER_CLASS("Murmur3Partitioner");
 
 Token Murmur3Partitioner::token_from_string_ref(const StringRef& token_string_ref) const {
   Token token(sizeof(int64_t), 0);
-  int64_t token_value = parse_int64(token_string_ref.data(), token_string_ref.size());
-  encode_uint64(&token[0], static_cast<uint64_t>(token_value) + CASS_UINT64_MAX / 2);
+  //int64_t token_value = parse_int64(token_string_ref.data(), token_string_ref.size());
+  //encode_uint64(&token[0], static_cast<uint64_t>(token_value) + CASS_UINT64_MAX / 2);
   return token;
 }
 
@@ -256,7 +258,7 @@ Token Murmur3Partitioner::hash(const uint8_t* data, size_t size) const {
   if (token_value == CASS_INT64_MIN) {
     token_value = CASS_INT64_MAX;
   }
-  encode_uint64(&token[0], static_cast<uint64_t>(token_value) + CASS_UINT64_MAX / 2);
+  //encode_uint64(&token[0], static_cast<uint64_t>(token_value) + CASS_UINT64_MAX / 2);
   return token;
 }
 
@@ -264,7 +266,7 @@ const std::string RandomPartitioner::PARTITIONER_CLASS("RandomPartitioner");
 
 Token RandomPartitioner::token_from_string_ref(const StringRef& token_string_ref) const {
   Token token(sizeof(uint64_t) * 2, 0);
-  parse_int128(token_string_ref.data(), token_string_ref.size(), &token[0]);
+  //parse_int128(token_string_ref.data(), token_string_ref.size(), &token[0]);
   return token;
 }
 

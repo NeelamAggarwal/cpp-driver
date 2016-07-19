@@ -21,6 +21,10 @@
 
 #include <string>
 
+#define CASS_MURMUR3_PARTITIONER      "Murmur3Partitioner"
+#define CASS_RANDOM_PARTITIONER       "RandomPartitioner"
+#define CASS_BYTE_ORDERED_PARTITIONER "ByteOrderedPartitioner"
+
 namespace cass {
 
 class VersionNumber;

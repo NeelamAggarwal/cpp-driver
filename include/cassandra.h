@@ -111,6 +111,7 @@ typedef long long cass_int64_t;
 typedef unsigned long long cass_uint64_t;
 #endif
 
+#define CASS_UINT32_MAX 4294967295UL
 #define CASS_UINT64_MAX 18446744073709551615ULL
 
 typedef cass_uint8_t cass_byte_t;
