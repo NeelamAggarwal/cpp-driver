@@ -24,9 +24,11 @@ TokenMetadata* TokenMetadata::from_partitioner(const std::string& partitioner) {
   if (ends_with(partitioner, CASS_MURMUR3_PARTITIONER)) {
     return new TokenMetadataImpl<Murmur3Partitioner>();
   } else if (ends_with(partitioner, CASS_RANDOM_PARTITIONER)) {
-    return new TokenMetadataImpl<RandomPartitioner>();
+    //return new TokenMetadataImpl<RandomPartitioner>();
+    return NULL;
   } else if (ends_with(partitioner, CASS_BYTE_ORDERED_PARTITIONER)) {
-    return new TokenMetadataImpl<ByteOrderedPartitioner>();
+    //return new TokenMetadataImpl<ByteOrderedPartitioner>();
+    return NULL;
   } else {
     LOG_WARN("Unsupported partitioner class '%s'", partitioner.c_str());
     return NULL;

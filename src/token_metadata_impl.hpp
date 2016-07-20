@@ -142,42 +142,6 @@ public:
   }
 };
 
-class SkippedEndpoints {
-public:
-  SkippedEndpoints()
-    : pos_(0) { }
-
-  void clear() {
-    pos_ = 0;
-    skipped_.clear();
-  }
-
-  bool empty() const {
-    return skipped_.empty() || pos_ == skipped_.size();
-  }
-
-  void push_back(size_t index) {
-    skipped_.push_back(index);
-  }
-
-  size_t pop_front() {
-    assert(!empty());
-    return skipped_[pos_++];
-  }
-
-private:
-  size_t pos_;
-  std::vector<size_t> skipped_;
-};
-
-
-class DcSkippedEndpointsMap : public sparsehash::dense_hash_map<uint32_t, SkippedEndpoints> {
-public:
-  DcSkippedEndpointsMap() {
-    set_empty_key(0);
-  }
-};
-
 class ReplicationFactorMap : public sparsehash::dense_hash_map<uint32_t, size_t> {
 public:
   ReplicationFactorMap() {
@@ -195,6 +159,45 @@ public:
 
   typedef std::pair<Token, CopyOnWriteHostVec> TokenReplicas;
   typedef std::vector<TokenReplicas> TokenReplicasVec;
+
+  typedef std::deque<typename TokenHostVec::const_iterator> TokenHostQueue; // TODO(mpenick): Make this not a std::deque<>
+
+  class SkippedEndpoints {
+  public:
+    typedef typename TokenHostVec::const_iterator Iterator;
+
+    SkippedEndpoints()
+      : pos_(0) { }
+
+    void clear() {
+      pos_ = 0;
+      skipped_.clear();
+    }
+
+    bool empty() const {
+      return skipped_.empty() || pos_ == skipped_.size();
+    }
+
+    void push_back(Iterator it) {
+      skipped_.push_back(it);
+    }
+
+    Iterator pop_front() {
+      assert(!empty());
+      return skipped_[pos_++];
+    }
+
+  private:
+    size_t pos_;
+    std::vector<Iterator> skipped_;
+  };
+
+  class DcSkippedEndpointsMap : public sparsehash::dense_hash_map<uint32_t, SkippedEndpoints> {
+  public:
+    DcSkippedEndpointsMap() {
+      sparsehash::dense_hash_map<uint32_t, SkippedEndpoints>::set_empty_key(0);
+    }
+  };
 
   enum Type {
     NETWORK_TOPOLOGY_STRATEGY,
@@ -342,11 +345,108 @@ void ReplicationStrategy<Partitioner>::build_replicas_network_topology(const Tok
   ReplicationFactorMap replica_counts;
   replica_counts.resize(replication_factors_.size());
 
-  size_t num_replicas = total_replication_factor_;
+  const size_t num_replicas = total_replication_factor_;
+  const size_t num_tokens = tokens.size();
 
-  size_t count = 0;
+  TokenHostQueue replicas;
+  typename TokenHostVec::const_iterator it = tokens.begin();
 
   for (typename TokenHostVec::const_iterator i = tokens.begin(), end = tokens.end(); i != end; ++i) {
+    Token token = i->first;
+    //printf("This token: %lld\n", token);
+
+    for (typename TokenHostQueue::const_iterator j = replicas.begin(), end = replicas.end(); j != end;) {
+      //printf("Last token: %lld This token: %lld\n", (int64_t)(*j)->first, (int64_t)token);
+      if ((*j)->first < token) {
+        const SharedRefPtr<Host>& host = (*j)->second;
+        uint32_t dc = host->dc_id();
+        uint32_t rack = host->rack_id();
+        size_t& replica_count_this_dc = replica_counts[dc];
+        if (replica_count_this_dc > 0) {
+          --replica_count_this_dc;
+        }
+        dc_racks_observed[dc].erase(rack);
+        ++j;
+        replicas.pop_front();
+      } else {
+        ++j;
+      }
+    }
+
+    //printf("Queue size: %zu\n", replicas.size());
+
+    for (size_t count = 0; count < num_tokens && replicas.size() < num_replicas; ++count) {
+      typename TokenHostVec::const_iterator  curr_it = it;
+      uint32_t dc = it->second->dc_id();
+      uint32_t rack = it->second->rack_id();
+
+      ++it;
+      if (it == tokens.end()) {
+        it = tokens.begin();
+      }
+
+      if (dc == 0) {
+        continue;
+      }
+
+      size_t replication_factor;
+      {
+        ReplicationFactorMap::const_iterator r = replication_factors_.find(dc);
+        if (r == replication_factors_.end()) {
+          continue;
+        }
+        replication_factor = r->second;
+      }
+
+      size_t& replica_count_this_dc = replica_counts[dc];
+      if (replica_count_this_dc >= replication_factor) {
+        continue;
+      }
+
+      size_t rack_count_this_dc;
+      {
+        DcRackMap::const_iterator r = dc_racks.find(dc);
+        if (r == dc_racks.end()) {
+          continue;
+        }
+        rack_count_this_dc = r->second.size();
+      }
+
+
+      RackSet& racks_observed_this_dc = dc_racks_observed[dc];
+
+      if (rack == 0 || racks_observed_this_dc.size() == rack_count_this_dc) {
+        ++replica_count_this_dc;
+        replicas.push_back(curr_it);
+      } else {
+        SkippedEndpoints& skipped_endpoints_this_dc = dc_skipped_endpoints[dc];
+        if (racks_observed_this_dc.count(rack) > 0) {
+          skipped_endpoints_this_dc.push_back(curr_it);
+        } else {
+          ++replica_count_this_dc;
+          replicas.push_back(curr_it);
+          racks_observed_this_dc.insert(rack);
+
+          if (racks_observed_this_dc.size() == rack_count_this_dc) {
+            while (!skipped_endpoints_this_dc.empty() && replica_count_this_dc < replication_factor) {
+              ++replica_count_this_dc;
+              replicas.push_back(skipped_endpoints_this_dc.pop_front());
+            }
+          }
+        }
+      }
+    }
+
+    CopyOnWriteHostVec hosts(new HostVec());
+    hosts->reserve(num_replicas);
+    for (typename TokenHostQueue::const_iterator j = replicas.begin(), end = replicas.end(); j != end; ++j) {
+      hosts->push_back(i->second);
+    }
+    result.push_back(TokenReplicas(token, hosts));
+  }
+
+#if 0
+  for (typename TokenHostVec::const_iterator end = tokens.end(); i != end;) {
     CopyOnWriteHostVec replicas(new HostVec());
     replicas->reserve(num_replicas);
 
@@ -420,9 +520,7 @@ void ReplicationStrategy<Partitioner>::build_replicas_network_topology(const Tok
     }
     result.push_back(TokenReplicas(i->first, replicas));
   }
-
-  printf("Total count: %zu\n", count);
-
+#endif
 }
 
 template <class Partitioner>

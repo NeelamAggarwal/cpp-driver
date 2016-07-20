@@ -294,20 +294,28 @@ BOOST_AUTO_TEST_CASE(murmur3)
   cass::ScopedPtr<cass::TokenMetadata> token_metadata(cass::TokenMetadata::from_partitioner(CASS_MURMUR3_PARTITIONER));
   MT19937_64 rng;
 
-  add_murmur3_host(create_host("127.0.0.1", "rack1", "dc1"), rng, 1024, token_metadata.get());
-  add_murmur3_host(create_host("127.0.0.2", "rack1", "dc1"), rng, 1024, token_metadata.get());
-  //add_murmur3_host(create_host("127.0.0.3", "rack1", "dc1"), -9223372036854775807 + 2048, 1024, token_metadata.get());
-  //add_murmur3_host(create_host("127.0.0.4", "rack1", "dc1"), -9223372036854775807 + 3072, 1024, token_metadata.get());
-  //add_murmur3_host(create_host("127.0.0.5", "rack1", "dc1"), -9223372036854775807 + 4096, 1024, token_metadata.get());
+  uint64_t start = uv_hrtime();
+  char buf[128];
+  for (int i = 0; i < 10; ++i) {
+    sprintf(buf, "127.0.%d.%d", i / 255, (i % 255 + 1));
+    add_murmur3_host(create_host(buf, "rack1", "dc1"), rng, 256, token_metadata.get());
+  }
+  //add_murmur3_host(create_host("127.0.0.2", "rack1", "dc1"), rng, 2048, token_metadata.get());
+  //add_murmur3_host(create_host("127.0.0.3", "rack1", "dc1"), rng, 2048, token_metadata.get());
+  //add_murmur3_host(create_host("127.0.0.4", "rack1", "dc1"), rng, 2048, token_metadata.get());
+  //add_murmur3_host(create_host("127.0.0.5", "rack1", "dc1"), rng, 2048, token_metadata.get());
+  //add_murmur3_host(create_host("127.0.0.6", "rack1", "dc1"), rng, 2048, token_metadata.get());
 
   ReplicationMap replication;
   replication["dc1"] = "3";
-  replication["dc2"] = "3";
+  //replication["dc2"] = "3"; // TODO: This causes havok if the no hosts with dc2 exist
   add_keyspace_network_topology("ks1", replication, token_metadata.get());
 
-  uint64_t start = uv_hrtime();
   token_metadata->build();
   uint64_t elapsed = uv_hrtime() - start;
+
+  // HERE
+  //token_metadata->get_replicas("ks1", )
 
   printf("Elapsed: %f ms\n", (double)elapsed / (1000.0 * 1000.0));
 }
